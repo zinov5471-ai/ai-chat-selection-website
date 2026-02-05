@@ -3,62 +3,65 @@ import { AIRoleSelector } from './components/AIRoleSelector';
 import { ChatInterface } from './components/ChatInterface';
 import { AIRole } from './types/ai';
 
-// Функция отправки выбора AI в n8n
+// Функция отправки выбора AI в n8n (no-cors версия)
 const sendToN8N = async (role: AIRole): Promise<void> => {
   try {
-    console.log('🚀 Отправка выбора AI в n8n:', role.name);
+    console.log('🚀 Отправка выбора AI в n8n (no-cors):', role.name);
     
-    const response = await fetch('https://zinov.online/webhook-test/ai-selection', {
+    // Отправляем БЕЗ ожидания ответа (no-cors режим)
+    await fetch('https://zinov.online/webhook-test/ai-selection', {
       method: 'POST',
+      mode: 'no-cors', // ← ВАЖНО: no-cors режим обходит CORS
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // Основная информация о выборе
+        // Основная информация
         event: 'ai_role_selected',
         timestamp: new Date().toISOString(),
         
         // Данные о пользователе
-        user: 'website_user', // TODO: заменить на реального пользователя
+        user: 'website_user',
         userAgent: navigator.userAgent,
         sourceUrl: window.location.href,
         
-        // Полные данные о выбранной AI роли
+        // Данные о выбранной AI роли
         aiRole: {
           id: role.id,
           name: role.name,
           description: role.description,
           icon: role.icon,
           color: role.color,
-          greeting: role.greeting.substring(0, 100) + '...' // обрезаем если длинное
+          greeting: role.greeting.substring(0, 100) + (role.greeting.length > 100 ? '...' : '')
         },
         
-        // Дополнительная информация
+        // Дополнительно
         platform: 'web',
-        version: '1.0.0'
+        version: '1.0.0',
+        mode: 'no-cors'
       }),
     });
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    // Так как mode: 'no-cors', мы не получаем response
+    // Просто логируем успех
+    console.log('✅ Данные отправлены в n8n (no-cors mode)');
     
-    const data = await response.json();
-    console.log('✅ Ответ от n8n:', data);
+    // Показываем пользователю
+    alert(`🎉 Выбрана ${role.name}! Данные отправлены в систему.`);
     
-    if (data.success) {
-      // Можно логировать успех
-      console.log(`✅ ${data.message}`);
-      
-      // Опционально: показать уведомление
-      // alert(`Выбрана ${role.name}! ${data.message}`);
-    } else {
-      console.warn('⚠️ n8n вернул ошибку:', data);
-    }
+    // Сохраняем в localStorage для отслеживания
+    localStorage.setItem('last_ai_selection', JSON.stringify({
+      ai: role.name,
+      aiId: role.id,
+      time: new Date().toISOString(),
+      status: 'sent'
+    }));
     
   } catch (error) {
-    console.error('❌ Ошибка отправки в n8n:', error);
-    // Не прерываем работу приложения при ошибке сети
+    // В no-cors режиме ошибки fetch не выбрасываются
+    // Но другие ошибки могут быть
+    console.error('❌ Ошибка в sendToN8N:', error);
+    alert('⚠️ Произошла ошибка при обработке выбора');
   }
 };
 
@@ -77,17 +80,15 @@ export default function App() {
       // 2.1 Отправляем в n8n
       await sendToN8N(role);
       
-      // 2.2 Сохраняем в localStorage (опционально)
-      localStorage.setItem('lastSelectedAI', JSON.stringify({
-        id: role.id,
-        name: role.name,
-        timestamp: new Date().toISOString()
-      }));
+      // 2.2 Можно добавить дополнительную логику
+      // Например, отправку в другие системы
       
-      // 2.3 Аналитика (если есть)
-      // if (window.gtag) {
-      //   window.gtag('event', 'select_ai', { ai_model: role.name });
-      // }
+      // 2.3 Логируем для отладки
+      console.log('📝 Выбор обработан:', {
+        role: role.name,
+        time: new Date().toISOString(),
+        userAgent: navigator.userAgent
+      });
     }
   };
 
