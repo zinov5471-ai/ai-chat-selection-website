@@ -8,7 +8,7 @@ const aiRoles: AIRole[] = [
     description: 'Compassionate listener for mental wellness',
     icon: 'brain',
     color: 'bg-purple-50 border-purple-200',
-    greeting: "Hello! I'm here to listen and support you. How are you feeling today?"
+    greeting: "Здравствуйте! Я здесь, чтобы выслушать вас и поддержать. Как вы себя сегодня чувствуете?"
   },
   {
     id: 'lawyer',
@@ -16,7 +16,7 @@ const aiRoles: AIRole[] = [
     description: 'Legal guidance and consultation',
     icon: 'scale',
     color: 'bg-blue-50 border-blue-200',
-    greeting: "Greetings! I'm your legal advisor. How can I assist you with legal matters today?"
+    greeting: "Здравствуйте! Я ваш юрисконсульт. Чем я могу вам сегодня помочь в юридических вопросах?"
   },
   {
     id: 'tech',
@@ -24,7 +24,7 @@ const aiRoles: AIRole[] = [
     description: 'Expert tech support and solutions',
     icon: 'wrench',
     color: 'bg-green-50 border-green-200',
-    greeting: "Hi there! I'm your technical consultant. What technical challenge can I help you solve?"
+    greeting: "Здравствуйте! Я ваш технический консультант. В решении каких технических задач я могу вам помочь?"
   },
   {
     id: 'friend',
@@ -32,7 +32,7 @@ const aiRoles: AIRole[] = [
     description: 'Friendly companion for casual chat',
     icon: 'heart',
     color: 'bg-rose-50 border-rose-200',
-    greeting: "Hey! I'm your AI friend. Let's chat about anything on your mind!"
+    greeting: "Привет! Я твой друг-искусственный интеллект. Давай поболтаем обо всём, что тебя волнует!"
   }
 ];
 
