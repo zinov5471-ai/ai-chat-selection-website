@@ -6,9 +6,9 @@ interface ChatInterfaceProps {
   selectedRole: AIRole | null;
 }
 
-// Константы для API - ПРОВЕРЬТЕ ЭТИ URL!
-const N8N_WEBHOOK_URL = 'https://zinov.online/webhook/ai-selection'; // Старый workflow
-const N8N_CHAT_URL = 'https://zinov.online/webhook/chat/message'; // Новый workflow
+// Константы для API
+const N8N_WEBHOOK_URL = 'https://zinov.online/webhook/ai-selection';
+const N8N_CHAT_URL = 'https://zinov.online/webhook/chat/message';
 
 export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -30,18 +30,15 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
     }
   }, []);
 
-  // При выборе роли - отправляем выбор в n8n и показываем приветствие
+  // При выборе роли
   useEffect(() => {
     if (selectedRole) {
-      // Генерируем новый chatId для этой сессии чата
       const newChatId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setChatId(newChatId);
       localStorage.setItem('current_chat_id', newChatId);
 
-      // 1. Отправляем выбор роли в n8n (существующий workflow)
       sendRoleSelectionToN8N(selectedRole, newChatId);
 
-      // 2. Показываем приветственное сообщение
       setMessages([
         {
           id: 'greeting_' + Date.now(),
@@ -60,7 +57,7 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Функция отправки выбора роли в n8n
+  // Отправка выбора роли в n8n
   const sendRoleSelectionToN8N = async (role: AIRole, newChatId: string) => {
     try {
       await fetch(N8N_WEBHOOK_URL, {
@@ -92,7 +89,7 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
     }
   };
 
-  // ОСНОВНАЯ ФУНКЦИЯ: Отправка сообщения в n8n
+  // ОСНОВНАЯ ФУНКЦИЯ: Отправка сообщения в n8n (ИСПРАВЛЕНА)
   const sendMessageToN8N = async (userMessage: string): Promise<string> => {
     if (!selectedRole || !sessionId || !chatId) {
       throw new Error('Недостаточно данных для отправки сообщения');
@@ -112,22 +109,17 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Основные данные
           sessionId: sessionId,
           chatId: chatId,
           aiRoleId: selectedRole.id,
           aiRoleName: selectedRole.name,
           userMessage: userMessage,
           timestamp: new Date().toISOString(),
-
-          // Контекст чата (последние 5 сообщений)
           chatHistory: messages.slice(-5).map(msg => ({
             role: msg.role,
             content: msg.content,
             timestamp: msg.timestamp.toISOString()
           })),
-
-          // Техническая информация
           metadata: {
             source: 'react_chat_interface',
             version: '1.0',
@@ -137,26 +129,52 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
         }),
       });
 
+      console.log('📊 Статус ответа n8n:', response.status, response.ok);
+
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('❌ Ошибка HTTP от n8n:', response.status, errorText);
         throw new Error(`n8n вернул ошибку ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('📥 Ответ от n8n:', data);
+      console.log('📥 Ответ от n8n (сырой):', data);
 
-      // Извлекаем ответ из разных возможных форматов
-      if (data.message) {
-        return data.message;
-      } else if (data.response) {
-        return data.response;
-      } else if (data.content) {
-        return data.content;
-      } else if (typeof data === 'string') {
-        return data;
-      } else {
-        return "Я получил ваш запрос. Для подробного ответа нужна дополнительная информация.";
+      // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: обработка массива/объекта
+      let responseData = data;
+      
+      // Если ответ - массив, берем первый элемент
+      if (Array.isArray(data) && data.length > 0) {
+        responseData = data[0];
+        console.log('📥 Извлекли первый элемент массива:', responseData);
       }
+
+      // Извлекаем текст ответа из разных возможных форматов
+      if (responseData && typeof responseData === 'object') {
+        // Приоритет 1: поле message
+        if (responseData.message && typeof responseData.message === 'string') {
+          console.log('✅ Нашли поле message:', responseData.message.substring(0, 50) + '...');
+          return responseData.message;
+        }
+        // Приоритет 2: поле response
+        if (responseData.response && typeof responseData.response === 'string') {
+          console.log('✅ Нашли поле response:', responseData.response.substring(0, 50) + '...');
+          return responseData.response;
+        }
+        // Приоритет 3: поле content
+        if (responseData.content && typeof responseData.content === 'string') {
+          console.log('✅ Нашли поле content:', responseData.content.substring(0, 50) + '...');
+          return responseData.content;
+        }
+        // Приоритет 4: строка
+        if (typeof responseData === 'string') {
+          console.log('✅ Ответ - строка:', responseData.substring(0, 50) + '...');
+          return responseData;
+        }
+      }
+
+      console.warn('⚠️ Неизвестный формат ответа n8n:', responseData);
+      return "Я получил ваш запрос. Для обработки ответа нужна дополнительная информация.";
 
     } catch (error) {
       console.error('❌ Ошибка отправки сообщения в n8n:', error);
@@ -167,7 +185,6 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
   const handleSend = async () => {
     if (!inputValue.trim() || !selectedRole || isLoading) return;
 
-    // 1. Сохраняем сообщение пользователя
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -180,10 +197,8 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
     setIsLoading(true);
 
     try {
-      // 2. Отправляем в n8n и получаем ответ
       const aiResponse = await sendMessageToN8N(inputValue);
 
-      // 3. Сохраняем ответ AI
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
@@ -193,15 +208,12 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
 
       setMessages(prev => [...prev, aiMessage]);
 
-      // 4. Сохраняем историю в localStorage
-      const chatHistory = [...messages, userMessage, aiMessage];
       localStorage.setItem(
         `chat_history_${selectedRole.id}_${chatId}`,
-        JSON.stringify(chatHistory.slice(-50))
+        JSON.stringify([...messages, userMessage, aiMessage].slice(-50))
       );
 
     } catch (error) {
-      // Если ошибка - показываем fallback сообщение
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
         role: 'ai',
@@ -214,7 +226,6 @@ export function ChatInterface({ selectedRole }: ChatInterfaceProps) {
     }
   };
 
-  // Функция для Enter
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
