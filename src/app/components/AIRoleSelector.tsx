@@ -52,7 +52,7 @@ export function AIRoleSelector({ selectedRole, onSelectRole }: AIRoleSelectorPro
   return (
     <div className="w-full md:w-80 bg-white rounded-3xl p-6 shadow-sm flex flex-col">
       <div className="mb-6">
-        <h1 className="text-2xl mb-2 text-gray-900">AI Companions</h1>
+        <h1 className="text-2xl mb-2 text-gray-900">ИИ агенты</h1>
         <p className="text-sm text-gray-500">Select your AI assistant</p>
       </div>
       
